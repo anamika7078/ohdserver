@@ -71,6 +71,7 @@ export async function signup(req: Request, res: Response) {
 
     return res.status(201).json({
       message: 'Super admin created successfully',
+      token,
       user: {
         id: user._id,
         email: user.email,
@@ -116,6 +117,7 @@ export async function login(req: Request, res: Response) {
 
     return res.json({
       message: 'Login successful',
+      token,
       user: {
         id: user._id,
         email: user.email,
