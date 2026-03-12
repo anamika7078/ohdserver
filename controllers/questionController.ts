@@ -1,16 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Question from '@/models/Question';
-import Section from '@/models/Section';
-import connectDB from '@/lib/db';
-import { requireAdmin } from '@/Backend/middleware/auth';
+import { Request, Response } from 'express';
+import Question from '../models/Question';
+import Section from '../models/Section';
+import connectDB from '../lib/db';
 
-export async function getQuestions(request: NextRequest) {
+export async function getQuestions(req: Request, res: Response) {
   try {
     await connectDB();
-    // Public endpoint - no admin auth required for survey access
 
-    const { searchParams } = new URL(request.url);
-    const sectionId = searchParams.get('sectionId');
+    const { sectionId } = req.query;
 
     const query: any = {};
     if (sectionId) {
@@ -18,28 +15,26 @@ export async function getQuestions(request: NextRequest) {
     }
 
     const questions = await Question.find(query).populate('sectionId', 'name pillar order').sort({ order: 1 });
-    return NextResponse.json({ questions });
+    return res.json({ questions });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch questions' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to fetch questions' });
   }
 }
 
-export async function createQuestion(request: NextRequest) {
+export async function createQuestion(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const body = await request.json();
-    const { sectionId, text, order } = body;
+    const { sectionId, text, order } = req.body;
 
     if (!sectionId || !text || order === undefined) {
-      return NextResponse.json({ error: 'Section ID, text, and order are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Section ID, text, and order are required' });
     }
 
     // Verify section exists
     const section = await Section.findById(sectionId);
     if (!section) {
-      return NextResponse.json({ error: 'Section not found' }, { status: 404 });
+      return res.status(404).json({ error: 'Section not found' });
     }
 
     const question = await Question.create({
@@ -50,9 +45,8 @@ export async function createQuestion(request: NextRequest) {
 
     const populatedQuestion = await Question.findById(question._id).populate('sectionId', 'name');
 
-    return NextResponse.json({ question: populatedQuestion }, { status: 201 });
+    return res.status(201).json({ question: populatedQuestion });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create question' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to create question' });
   }
 }
-

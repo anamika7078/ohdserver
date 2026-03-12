@@ -1,27 +1,27 @@
-import { NextRequest } from 'next/server';
-import { verifyToken, JWTPayload } from '@/utils/jwt';
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken, JWTPayload } from '../utils/jwt';
 
-export interface AuthenticatedRequest extends NextRequest {
+export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
 }
 
-export function getAuthToken(request: NextRequest): string | null {
+export function getAuthToken(req: Request): string | null {
   // Check cookie first (for frontend)
-  const cookieToken = request.cookies.get('token')?.value;
+  const cookieToken = req.cookies?.token;
   if (cookieToken) {
     return cookieToken;
   }
 
   // Fallback to header (for API clients)
-  const authHeader = request.headers.get('authorization');
+  const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
   return null;
 }
 
-export function authenticateRequest(request: NextRequest): JWTPayload {
-  const token = getAuthToken(request);
+export function authenticateRequest(req: Request): JWTPayload {
+  const token = getAuthToken(req);
   
   if (!token) {
     throw new Error('Authentication token required');
@@ -34,13 +34,17 @@ export function authenticateRequest(request: NextRequest): JWTPayload {
   }
 }
 
-export function requireAdmin(request: NextRequest): JWTPayload {
-  const user = authenticateRequest(request);
-  
-  if (user.role !== 'super_admin') {
-    throw new Error('Admin access required');
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const user = authenticateRequest(req);
+    
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    (req as AuthenticatedRequest).user = user;
+    next();
+  } catch (error: any) {
+    return res.status(401).json({ error: error.message || 'Authentication failed' });
   }
-
-  return user;
 }
-

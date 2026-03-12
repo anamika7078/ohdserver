@@ -10,9 +10,9 @@
  */
 
 import mongoose from 'mongoose';
-import Section from '@/models/Section';
-import Question from '@/models/Question';
-import connectDB from '@/lib/db';
+import Section from '../models/Section';
+import Question from '../models/Question';
+import connectDB from '../lib/db';
 
 // Define pillars with their subsections
 const pillars = [

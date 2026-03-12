@@ -1,7 +1,7 @@
-import { Rating } from '@/models/EmployeeResponse';
-import EmployeeResponse, { IAnswer } from '@/models/EmployeeResponse';
-import Question from '@/models/Question';
-import Section from '@/models/Section';
+import { Rating } from '../models/EmployeeResponse';
+import EmployeeResponse, { IAnswer } from '../models/EmployeeResponse';
+import Question from '../models/Question';
+import Section from '../models/Section';
 import mongoose from 'mongoose';
 
 export interface RatingCount {

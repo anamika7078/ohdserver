@@ -1,28 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import { requireAdmin } from '@/Backend/middleware/auth';
-import { calculateOverallStats, calculateSectionStats } from '@/utils/calculations';
-import Section from '@/models/Section';
-import Company from '@/models/Company';
+import { Request, Response } from 'express';
+import connectDB from '../lib/db';
+import { calculateOverallStats, calculateSectionStats } from '../utils/calculations';
+import Section from '../models/Section';
+import Company from '../models/Company';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 
-export async function exportPDF(request: NextRequest, { params }: { params: { companyId: string } }) {
+export async function exportPDF(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const company = await Company.findById(params.companyId);
+    const company = await Company.findById(req.params.companyId);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return res.status(404).json({ error: 'Company not found' });
     }
 
-    const overallStats = await calculateOverallStats(params.companyId);
+    const overallStats = await calculateOverallStats(req.params.companyId);
     const sections = await Section.find().sort({ order: 1 });
     const sectionStats = [];
 
     for (const section of sections) {
-      const stats = await calculateSectionStats(section._id.toString(), params.companyId);
+      const stats = await calculateSectionStats(section._id.toString(), req.params.companyId);
       sectionStats.push(stats);
     }
 
@@ -88,33 +86,29 @@ export async function exportPDF(request: NextRequest, { params }: { params: { co
       doc.end();
     });
 
-    return new NextResponse(pdfBuffer as any, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="ohd-report-${company.name}-${Date.now()}.pdf"`,
-      },
-    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ohd-report-${company.name}-${Date.now()}.pdf"`);
+    return res.send(pdfBuffer);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to export PDF' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to export PDF' });
   }
 }
 
-export async function exportExcel(request: NextRequest, { params }: { params: { companyId: string } }) {
+export async function exportExcel(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const company = await Company.findById(params.companyId);
+    const company = await Company.findById(req.params.companyId);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return res.status(404).json({ error: 'Company not found' });
     }
 
-    const overallStats = await calculateOverallStats(params.companyId);
+    const overallStats = await calculateOverallStats(req.params.companyId);
     const sections = await Section.find().sort({ order: 1 });
     const sectionStats = [];
 
     for (const section of sections) {
-      const stats = await calculateSectionStats(section._id.toString(), params.companyId);
+      const stats = await calculateSectionStats(section._id.toString(), req.params.companyId);
       sectionStats.push(stats);
     }
 
@@ -201,14 +195,10 @@ export async function exportExcel(request: NextRequest, { params }: { params: { 
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer();
 
-    return new NextResponse(buffer as any, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="ohd-report-${company.name}-${Date.now()}.xlsx"`,
-      },
-    });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="ohd-report-${company.name}-${Date.now()}.xlsx"`);
+    return res.send(buffer);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to export Excel' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to export Excel' });
   }
 }
-

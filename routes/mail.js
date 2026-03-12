@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { sendBulkMail, getMailLogs } = require('../controllers/mailController');
-const { requireAdmin } = require('../middleware/auth');
+const { sendBulkMail, getMailLogs } = require('../dist/controllers/mailController');
+const { requireAdmin } = require('../dist/middleware/auth');
 
 const upload = multer({ storage: multer.memoryStorage() });
 

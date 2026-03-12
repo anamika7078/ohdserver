@@ -1,73 +1,67 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import { requireAdmin } from '@/Backend/middleware/auth';
-import { calculateQuestionStats, calculateSectionStats, calculateOverallStats } from '@/utils/calculations';
+import { Request, Response } from 'express';
+import connectDB from '../lib/db';
+import { calculateQuestionStats, calculateSectionStats, calculateOverallStats } from '../utils/calculations';
+import Section from '../models/Section';
 
-export async function getCompanyReport(request: NextRequest, { params }: { params: { companyId: string } }) {
+export async function getCompanyReport(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const overallStats = await calculateOverallStats(params.companyId);
-    const sections = await (await import('@/models/Section')).default.find().sort({ order: 1 });
+    const overallStats = await calculateOverallStats(req.params.companyId);
+    const sections = await Section.find().sort({ order: 1 });
     const sectionStats = [];
 
     for (const section of sections) {
-      const stats = await calculateSectionStats(section._id.toString(), params.companyId);
+      const stats = await calculateSectionStats(section._id.toString(), req.params.companyId);
       sectionStats.push(stats);
     }
 
-    return NextResponse.json({
-      companyId: params.companyId,
+    return res.json({
+      companyId: req.params.companyId,
       overallStats,
       sectionStats,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to generate company report' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to generate company report' });
   }
 }
 
-export async function getSectionReport(request: NextRequest, { params }: { params: { sectionId: string } }) {
+export async function getSectionReport(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get('companyId');
+    const { companyId } = req.query;
 
-    const sectionStats = await calculateSectionStats(params.sectionId, companyId || undefined);
+    const sectionStats = await calculateSectionStats(req.params.sectionId, companyId as string | undefined);
 
-    return NextResponse.json({
+    return res.json({
       sectionStats,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to generate section report' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to generate section report' });
   }
 }
 
-export async function getOverallReport(request: NextRequest) {
+export async function getOverallReport(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get('companyId');
+    const { companyId } = req.query;
 
-    const overallStats = await calculateOverallStats(companyId || undefined);
-    const sections = await (await import('@/models/Section')).default.find().sort({ order: 1 });
+    const overallStats = await calculateOverallStats(companyId as string | undefined);
+    const sections = await Section.find().sort({ order: 1 });
     const sectionStats = [];
 
     for (const section of sections) {
-      const stats = await calculateSectionStats(section._id.toString(), companyId || undefined);
+      const stats = await calculateSectionStats(section._id.toString(), companyId as string | undefined);
       sectionStats.push(stats);
     }
 
-    return NextResponse.json({
+    return res.json({
       overallStats,
       sectionStats,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to generate overall report' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to generate overall report' });
   }
 }
-

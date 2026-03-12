@@ -1,30 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import User from '@/models/User';
-import { hashPassword, comparePassword } from '@/utils/password';
-import { generateToken } from '@/utils/jwt';
-import connectDB from '@/lib/db';
+import { Request, Response } from 'express';
+import User from '../models/User';
+import { hashPassword, comparePassword } from '../utils/password';
+import { generateToken } from '../utils/jwt';
+import connectDB from '../lib/db';
 
-export async function signup(request: NextRequest) {
+export async function signup(req: Request, res: Response) {
   try {
     await connectDB();
 
-    const body = await request.json();
-    const { email, password } = body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Check if super admin already exists
     const existingAdmin = await User.findOne({ role: 'super_admin' });
     if (existingAdmin) {
-      return NextResponse.json({ error: 'Super admin already exists. Only one super admin is allowed.' }, { status: 400 });
+      return res.status(400).json({ error: 'Super admin already exists. Only one super admin is allowed.' });
     }
 
     // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
+      return res.status(400).json({ error: 'User with this email already exists' });
     }
 
     // Hash password
@@ -44,54 +43,48 @@ export async function signup(request: NextRequest) {
       role: user.role,
     });
 
-    const response = NextResponse.json(
-      {
-        message: 'Super admin created successfully',
-        user: {
-          id: user._id,
-          email: user.email,
-          role: user.role,
-        },
-      },
-      { status: 201 }
-    );
-
     // Set HTTP-only cookie
-    response.cookies.set('token', token, {
+    res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days in milliseconds
       path: '/',
     });
 
-    return response;
+    return res.status(201).json({
+      message: 'Super admin created successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Signup failed' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Signup failed' });
   }
 }
 
-export async function login(request: NextRequest) {
+export async function login(req: Request, res: Response) {
   try {
     await connectDB();
 
-    const body = await request.json();
-    const { email, password } = body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Verify password
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Generate token
@@ -101,7 +94,16 @@ export async function login(request: NextRequest) {
       role: user.role,
     });
 
-    const response = NextResponse.json({
+    // Set HTTP-only cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days in milliseconds
+      path: '/',
+    });
+
+    return res.json({
       message: 'Login successful',
       user: {
         id: user._id,
@@ -109,19 +111,12 @@ export async function login(request: NextRequest) {
         role: user.role,
       },
     });
-
-    // Set HTTP-only cookie
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
-
-    return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Login failed' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Login failed' });
   }
 }
 
+export async function logout(req: Request, res: Response) {
+  res.clearCookie('token', { path: '/' });
+  return res.json({ message: 'Logout successful' });
+}

@@ -6,8 +6,8 @@ const {
   getCompanyById,
   updateCompany,
   deleteCompany
-} = require('../controllers/companyController');
-const { requireAdmin } = require('../middleware/auth');
+} = require('../dist/controllers/companyController');
+const { requireAdmin } = require('../dist/middleware/auth');
 
 router.get('/', requireAdmin, getCompanies);
 router.post('/', requireAdmin, createCompany);

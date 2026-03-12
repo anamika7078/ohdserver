@@ -1,34 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Section from '@/models/Section';
-import connectDB from '@/lib/db';
-import { requireAdmin } from '@/Backend/middleware/auth';
+import { Request, Response } from 'express';
+import Section from '../models/Section';
+import connectDB from '../lib/db';
 
-export async function getSections(request: NextRequest) {
+export async function getSections(req: Request, res: Response) {
   try {
     await connectDB();
-    // Public endpoint - no admin auth required for survey access
 
     const sections = await Section.find().sort({ pillar: 1, order: 1 });
-    return NextResponse.json({ sections });
+    return res.json({ sections });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch sections' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to fetch sections' });
   }
 }
 
-export async function createSection(request: NextRequest) {
+export async function createSection(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const body = await request.json();
-    const { name, description, pillar, order } = body;
+    const { name, description, pillar, order } = req.body;
 
     if (!name || pillar === undefined || order === undefined) {
-      return NextResponse.json({ error: 'Name, pillar, and order are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Name, pillar, and order are required' });
     }
 
     if (pillar < 1 || pillar > 5) {
-      return NextResponse.json({ error: 'Pillar must be between 1 and 5' }, { status: 400 });
+      return res.status(400).json({ error: 'Pillar must be between 1 and 5' });
     }
 
     const section = await Section.create({
@@ -38,9 +34,8 @@ export async function createSection(request: NextRequest) {
       order,
     });
 
-    return NextResponse.json({ section }, { status: 201 });
+    return res.status(201).json({ section });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create section' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to create section' });
   }
 }
-

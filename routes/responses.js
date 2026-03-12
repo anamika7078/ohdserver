@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { submitResponse, getCompanyResponses } = require('../controllers/responseController');
-const { requireAdmin } = require('../middleware/auth');
+const { submitResponse, getCompanyResponses } = require('../dist/controllers/responseController');
+const { requireAdmin } = require('../dist/middleware/auth');
 
 router.post('/', submitResponse);
 router.get('/companies/:companyId', requireAdmin, getCompanyResponses);

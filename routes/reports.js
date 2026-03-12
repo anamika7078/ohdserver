@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { getCompanyReport, getSectionReport, getOverallReport } = require('../controllers/reportController');
-const { requireAdmin } = require('../middleware/auth');
+const { getCompanyReport, getSectionReport, getOverallReport } = require('../dist/controllers/reportController');
+const { requireAdmin } = require('../dist/middleware/auth');
 
 router.get('/companies/:companyId', requireAdmin, getCompanyReport);
 router.get('/sections/:sectionId', requireAdmin, getSectionReport);

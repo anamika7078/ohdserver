@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
-    "init-db": "node scripts/initDatabase.js"
+    "build": "tsc",
+    "dev": "npm run build && node server.js",
+    "start": "npm run build && node server.js",
+    "init-db": "npm run build && node dist/scripts/initDatabase.js"
   },
   "dependencies": {
     "express": "^4.18.2",

@@ -1,36 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Company from '@/models/Company';
-import connectDB from '@/lib/db';
-import { requireAdmin } from '@/Backend/middleware/auth';
+import { Request, Response } from 'express';
+import Company from '../models/Company';
+import connectDB from '../lib/db';
 
-export async function getCompanies(request: NextRequest) {
+export async function getCompanies(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
     const companies = await Company.find().sort({ createdAt: -1 });
-    return NextResponse.json({ companies });
+    return res.json({ companies });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch companies' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to fetch companies' });
   }
 }
 
-export async function createCompany(request: NextRequest) {
+export async function createCompany(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const body = await request.json();
-    const { name, email, industry, employeeCount } = body;
+    const { name, email, industry, employeeCount } = req.body;
 
     if (!name || !email) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Name and email are required' });
     }
 
     // Check if email already exists
     const existingCompany = await Company.findOne({ email });
     if (existingCompany) {
-      return NextResponse.json({ error: 'Company with this email already exists' }, { status: 400 });
+      return res.status(400).json({ error: 'Company with this email already exists' });
     }
 
     const company = await Company.create({
@@ -41,75 +37,70 @@ export async function createCompany(request: NextRequest) {
       status: 'active',
     });
 
-    return NextResponse.json({ company }, { status: 201 });
+    return res.status(201).json({ company });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create company' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to create company' });
   }
 }
 
-export async function getCompanyById(request: NextRequest, { params }: { params: { id: string } }) {
+export async function getCompanyById(req: Request, res: Response) {
   try {
     await connectDB();
-    // Public endpoint - no admin auth required for survey access
 
-    const company = await Company.findById(params.id);
+    const company = await Company.findById(req.params.id);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return res.status(404).json({ error: 'Company not found' });
     }
 
-    return NextResponse.json({ company });
+    return res.json({ company });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch company' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to fetch company' });
   }
 }
 
-export async function updateCompany(request: NextRequest, { params }: { params: { id: string } }) {
+export async function updateCompany(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const body = await request.json();
-    const { name, email, industry, employeeCount, status } = body;
+    const { name, email, industry, employeeCount, status } = req.body;
 
-    const company = await Company.findById(params.id);
+    const company = await Company.findById(req.params.id);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return res.status(404).json({ error: 'Company not found' });
     }
 
     // Check email uniqueness if email is being updated
     if (email && email !== company.email) {
       const existingCompany = await Company.findOne({ email });
       if (existingCompany) {
-        return NextResponse.json({ error: 'Company with this email already exists' }, { status: 400 });
+        return res.status(400).json({ error: 'Company with this email already exists' });
       }
     }
 
     const updatedCompany = await Company.findByIdAndUpdate(
-      params.id,
+      req.params.id,
       { name, email, industry, employeeCount, status },
       { new: true, runValidators: true }
     );
 
-    return NextResponse.json({ company: updatedCompany });
+    return res.json({ company: updatedCompany });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update company' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to update company' });
   }
 }
 
-export async function deleteCompany(request: NextRequest, { params }: { params: { id: string } }) {
+export async function deleteCompany(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const company = await Company.findById(params.id);
+    const company = await Company.findById(req.params.id);
     if (!company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      return res.status(404).json({ error: 'Company not found' });
     }
 
-    await Company.findByIdAndDelete(params.id);
-    return NextResponse.json({ message: 'Company deleted successfully' });
+    await Company.findByIdAndDelete(req.params.id);
+    return res.json({ message: 'Company deleted successfully' });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete company' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to delete company' });
   }
 }
-

@@ -1,38 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import { requireAdmin } from '@/Backend/middleware/auth';
-import { sendBulkEmails, generateSurveyEmail } from '@/services/mailService';
-import MailLog from '@/models/MailLog';
+import { Request, Response } from 'express';
+import connectDB from '../lib/db';
+import { sendBulkEmails, generateSurveyEmail } from '../services/mailService';
+import MailLog from '../models/MailLog';
 import * as XLSX from 'xlsx';
 
-export async function sendBulkMail(request: NextRequest) {
+export async function sendBulkMail(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const subject = formData.get('subject') as string;
-    const companyId = formData.get('companyId') as string | null;
-    const surveyLink = formData.get('surveyLink') as string;
-    const companyName = formData.get('companyName') as string || 'Your Organization';
+    const file = req.file;
+    const { subject, companyId, surveyLink, companyName } = req.body;
 
     if (!file) {
-      return NextResponse.json({ error: 'File is required' }, { status: 400 });
+      return res.status(400).json({ error: 'File is required' });
     }
 
     if (!subject || !surveyLink) {
-      return NextResponse.json({ error: 'Subject and survey link are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Subject and survey link are required' });
     }
 
     // Extract emails from file
     const emails: string[] = [];
-    const fileBuffer = await file.arrayBuffer();
-    const fileName = file.name.toLowerCase();
+    const fileBuffer = file.buffer;
+    const fileName = file.originalname.toLowerCase();
 
     if (fileName.endsWith('.csv')) {
       // Parse CSV
-      const text = Buffer.from(fileBuffer).toString('utf-8');
+      const text = fileBuffer.toString('utf-8');
       const lines = text.split('\n');
 
       // Assume first column contains emails, or look for email pattern
@@ -83,43 +77,38 @@ export async function sendBulkMail(request: NextRequest) {
         }
       }
     } else {
-      return NextResponse.json({ error: 'Unsupported file format. Please upload CSV or Excel file.' }, { status: 400 });
+      return res.status(400).json({ error: 'Unsupported file format. Please upload CSV or Excel file.' });
     }
 
     if (emails.length === 0) {
-      return NextResponse.json({ error: 'No valid emails found in the file' }, { status: 400 });
+      return res.status(400).json({ error: 'No valid emails found in the file' });
     }
 
     // Remove duplicates
     const uniqueEmails = [...new Set(emails)];
 
     // Generate email HTML
-    const html = generateSurveyEmail(companyName, surveyLink);
+    const html = generateSurveyEmail(companyName || 'Your Organization', surveyLink);
 
     // Send bulk emails
     const result = await sendBulkEmails(uniqueEmails, subject, html, companyId || undefined);
 
-    return NextResponse.json({
+    return res.json({
       message: 'Bulk email sending completed',
       total: uniqueEmails.length,
       sent: result.sent,
       failed: result.failed,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to send bulk emails' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to send bulk emails' });
   }
 }
 
-export async function getMailLogs(request: NextRequest) {
+export async function getMailLogs(req: Request, res: Response) {
   try {
     await connectDB();
-    requireAdmin(request);
 
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get('companyId');
-    const status = searchParams.get('status');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const { companyId, status, page = '1', limit = '50' } = req.query;
 
     const query: any = {};
     if (companyId) {
@@ -132,22 +121,21 @@ export async function getMailLogs(request: NextRequest) {
     const logs = await MailLog.find(query)
       .populate('companyId', 'name')
       .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip((page - 1) * limit);
+      .limit(parseInt(limit as string))
+      .skip((parseInt(page as string) - 1) * parseInt(limit as string));
 
     const total = await MailLog.countDocuments(query);
 
-    return NextResponse.json({
+    return res.json({
       logs,
       pagination: {
-        page,
-        limit,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
         total,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / parseInt(limit as string)),
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch mail logs' }, { status: 500 });
+    return res.status(500).json({ error: error.message || 'Failed to fetch mail logs' });
   }
 }
-
