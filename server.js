@@ -18,8 +18,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? [process.env.FRONTEND_URL] 
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim()).filter(Boolean)
   : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
 
 app.use(cors({
@@ -27,10 +27,10 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
+      return callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
-      callback(null, true); // Allow all origins in development
+      return callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true

@@ -4,6 +4,29 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import connectDB from '../lib/db';
 
+function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' as const : 'lax' as const,
+    maxAge: 60 * 60 * 24 * 7 * 1000,
+    path: '/',
+  };
+}
+
+function getClearCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' as const : 'lax' as const,
+    path: '/',
+  };
+}
+
 export async function signup(req: Request, res: Response) {
   try {
     await connectDB();
@@ -44,13 +67,7 @@ export async function signup(req: Request, res: Response) {
     });
 
     // Set HTTP-only cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days in milliseconds
-      path: '/',
-    });
+    res.cookie('token', token, getCookieOptions());
 
     return res.status(201).json({
       message: 'Super admin created successfully',
@@ -95,13 +112,7 @@ export async function login(req: Request, res: Response) {
     });
 
     // Set HTTP-only cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days in milliseconds
-      path: '/',
-    });
+    res.cookie('token', token, getCookieOptions());
 
     return res.json({
       message: 'Login successful',
@@ -117,6 +128,6 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function logout(req: Request, res: Response) {
-  res.clearCookie('token', { path: '/' });
+  res.clearCookie('token', getClearCookieOptions());
   return res.json({ message: 'Logout successful' });
 }
