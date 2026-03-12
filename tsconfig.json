@@ -27,6 +27,7 @@
     "node_modules",
     "dist",
     "routes",
-    "app"
+    "app",
+    "lib/api.ts"
   ]
 }
